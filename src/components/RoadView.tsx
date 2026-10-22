@@ -1,28 +1,68 @@
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { SystemState } from "../logic/types";
 import "./RoadView.css";
 
+const VIEW_W = 720;
 const ROAD_TOP = 180;
-const lampX = (n: number) => 120 + (n - 1) * 120; // n. lambanın (ya da konumun) x koordinatı
+const LAMP_GAP = 120; // çizimde iki lamba arası mesafe
+const lampX = (n: number) => LAMP_GAP * n; // n. lambanın (ya da konumun) x koordinatı
 
-export function RoadView({ state }: { state: SystemState }) {
+interface Props {
+  state: SystemState;
+  onDrag?: (position: number) => void; // sürüklenen nesnenin yeni konumu (lamba cinsinden)
+  onDraggingChange?: (dragging: boolean) => void;
+}
+
+export function RoadView({ state, onDrag, onDraggingChange }: Props) {
   const { lamps, object, isNight } = state;
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  // Farenin ekrandaki x konumunu lamba cinsinden konuma çevirir (lampX'in tersi)
+  const toPosition = (clientX: number) => {
+    const svg = svgRef.current;
+    if (!svg) return null;
+    const rect = svg.getBoundingClientRect();
+    return (((clientX - rect.left) / rect.width) * VIEW_W) / LAMP_GAP;
+  };
+
+  // Yolun herhangi bir yerine basınca nesne oraya gelir ve sürükleme başlar
+  const startDrag = (e: ReactPointerEvent<SVGRectElement>) => {
+    const position = toPosition(e.clientX);
+    if (!onDrag || position === null) return;
+    // Fare SVG'nin dışına çıksa bile hareketleri yakalamaya devam et
+    svgRef.current?.setPointerCapture(e.pointerId);
+    setDragging(true);
+    onDraggingChange?.(true);
+    onDrag(position);
+  };
+
+  const moveDrag = (e: ReactPointerEvent<SVGSVGElement>) => {
+    if (!dragging || !onDrag) return;
+    const position = toPosition(e.clientX);
+    if (position !== null) onDrag(position);
+  };
+
+  const endDrag = () => {
+    if (!dragging) return;
+    setDragging(false);
+    onDraggingChange?.(false);
+  };
 
   return (
     <svg
-      className={`road ${isNight ? "night" : "day"}`}
-      viewBox="0 0 720 260"
+      ref={svgRef}
+      className={`road ${isNight ? "night" : "day"}${dragging ? " dragging" : ""}`}
+      viewBox={`0 0 ${VIEW_W} 260`}
       role="img"
       aria-label="Yol ve sokak lambaları"
+      onPointerMove={moveDrag}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
     >
-      <rect width="720" height={ROAD_TOP} className="sky" />
-      <rect y={ROAD_TOP} width="720" height="60" className="asphalt" />
-      <line
-        x1="0"
-        y1={ROAD_TOP + 30}
-        x2="720"
-        y2={ROAD_TOP + 30}
-        className="lane"
-      />
+      <rect width={VIEW_W} height={ROAD_TOP} className="sky" />
+      <rect y={ROAD_TOP} width={VIEW_W} height="60" className="asphalt" />
+      <line x1="0" y1={ROAD_TOP + 30} x2={VIEW_W} y2={ROAD_TOP + 30} className="lane" />
 
       {lamps.map((level, i) => {
         const x = lampX(i + 1);
@@ -34,27 +74,11 @@ export function RoadView({ state }: { state: SystemState }) {
               className="beam"
               style={{ opacity: glow * 0.45 }}
             />
-            <line
-              x1={x - 20}
-              y1={ROAD_TOP}
-              x2={x - 20}
-              y2={60}
-              className="pole"
-            />
+            <line x1={x - 20} y1={ROAD_TOP} x2={x - 20} y2={60} className="pole" />
             <line x1={x - 20} y1={60} x2={x} y2={60} className="pole" />
-            <circle
-              cx={x}
-              cy={66}
-              r={7}
-              className="bulb"
-              style={{ opacity: 0.2 + glow * 0.8 }}
-            />
-            <text x={x} y={40} className="level">
-              %{level}
-            </text>
-            <text x={x} y={256} className="lamp-no">
-              {i + 1}
-            </text>
+            <circle cx={x} cy={66} r={7} className="bulb" style={{ opacity: 0.2 + glow * 0.8 }} />
+            <text x={x} y={40} className="level">%{level}</text>
+            <text x={x} y={256} className="lamp-no">{i + 1}</text>
           </g>
         );
       })}
@@ -79,6 +103,18 @@ export function RoadView({ state }: { state: SystemState }) {
           <line y1={-8} x2={-5} y2={0} />
           <line y1={-8} x2={5} y2={0} />
         </g>
+      )}
+
+      {/* Yol şeridini (ve yayanın başının olduğu biraz üstünü) kaplayan görünmez tutma alanı */}
+      {object && onDrag && (
+        <rect
+          y={ROAD_TOP - 40}
+          width={VIEW_W}
+          height={100}
+          fill="transparent"
+          className="drag-zone"
+          onPointerDown={startDrag}
+        />
       )}
     </svg>
   );
