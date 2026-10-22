@@ -60,6 +60,26 @@ h1 {
 .controls button:disabled:hover {
   border-color: var(--border);
 }
+.speed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 260px;
+  font-size: 0.9rem;
+}
+.speed input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+.speed strong {
+  min-width: 72px;
+  font-variant-numeric: tabular-nums;
+}
+.speed-type {
+  align-self: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
 .paused-note {
   align-self: center;
   color: var(--accent);

@@ -85,6 +85,21 @@ export function useMockSimulation(config: ControllerConfig = DEFAULT_CONFIG) {
         : prev,
     );
 
+  // Yoldaki nesnenin hızını değiştirir; Kural 6 gereği tür de hıza göre yeniden belirlenir
+  const setObjectSpeed = (speedKmh: number) =>
+    setSim((prev) =>
+      prev.object
+        ? {
+            ...prev,
+            object: {
+              ...prev.object,
+              speedKmh,
+              type: classifyBySpeed(speedKmh, config),
+            },
+          }
+        : prev,
+    );
+
   // Nesne 1. lambanın biraz gerisinden (konum 0) yola girer
   const spawn = (speedKmh: number) =>
     setSim((prev) => ({
@@ -112,6 +127,7 @@ export function useMockSimulation(config: ControllerConfig = DEFAULT_CONFIG) {
     stepForward,
     setDragging,
     moveObjectTo,
+    setObjectSpeed,
     spawn,
     setNight,
     resetEnergy,
