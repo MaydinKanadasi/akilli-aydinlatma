@@ -2,6 +2,8 @@
 
 ESP32 tabanlı akıllı sokak aydınlatma sisteminin web arayüzü ve simülasyonu. Yoldaki yaya ve araçlar algılanır, lambalar PWM ile kısılıp açılır: ışık nesneyle birlikte ilerler, nesnenin olmadığı yerde lambalar kapalı kalır. Böylece gece boyunca tüm lambaları %100 yakan klasik sisteme göre ciddi enerji tasarrufu sağlanır.
 
+**Canlı demo:** https://akilli-aydinlatma.vercel.app
+
 ## Ders Bilgisi
 
 | | |
