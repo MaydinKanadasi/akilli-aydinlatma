@@ -1,4 +1,5 @@
 import { RoadView } from "./components/RoadView";
+import { EnergyPanel } from "./components/EnergyPanel";
 import { useMockSimulation } from "./hooks/useMockSimulation";
 import "./App.css";
 
@@ -42,6 +43,10 @@ function App() {
         {sim.paused && (
           <span className="paused-note">Simülasyon duraklatıldı</span>
         )}
+      </section>
+
+      <section className="panel">
+        <EnergyPanel state={state} energy={sim.energy} onReset={sim.resetEnergy} />
       </section>
     </main>
   );
