@@ -32,6 +32,13 @@ function App() {
         <button onClick={() => sim.setPaused(!sim.paused)}>
           {sim.paused ? "▶️ Devam et" : "⏸️ Duraklat"}
         </button>
+        <button
+          onClick={sim.stepForward}
+          disabled={!sim.paused}
+          title="Duraklatılmışken nesneyi çeyrek lamba aralığı ilerletir"
+        >
+          ⏭️ Bir adım
+        </button>
         {[1, 5, 10].map((scale) => (
           <button
             key={scale}
@@ -43,6 +50,13 @@ function App() {
         ))}
         {sim.paused && (
           <span className="paused-note">Simülasyon duraklatıldı</span>
+        )}
+        {state.object && (
+          <span className="sim-info">
+            {state.object.type === "car" ? "Araç" : "Yaya"} ·{" "}
+            {state.object.speedKmh} km/s · konum{" "}
+            {state.object.position.toFixed(2)}
+          </span>
         )}
       </section>
 
