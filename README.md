@@ -1,75 +1,104 @@
-# React + TypeScript + Vite
+# Akıllı Sokak Aydınlatması
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+ESP32 tabanlı akıllı sokak aydınlatma sisteminin web arayüzü ve simülasyonu. Yoldaki yaya ve araçlar algılanır, lambalar PWM ile kısılıp açılır: ışık nesneyle birlikte ilerler, nesnenin olmadığı yerde lambalar kapalı kalır. Böylece gece boyunca tüm lambaları %100 yakan klasik sisteme göre ciddi enerji tasarrufu sağlanır.
 
-Currently, two official plugins are available:
+## Ders Bilgisi
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| | |
+|---|---|
+| **Ders** | Karmaşık Mühendislik Tasarımı (MOS2-4701) |
+| **Öğretim Üyesi** | Dr. Öğr. Üyesi Arzu Türksoy, Elektrik-Elektronik Mühendisliği |
+| **Kurum** | İskenderun Teknik Üniversitesi |
 
-## React Compiler
+## Kontrol Kuralları
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. Gündüz tüm lambalar kapalıdır (%0).
+2. Gece yolda nesne yoksa tüm lambalar kapalıdır (%0).
+3. Nesnenin bulunduğu lamba %100 yanar.
+4. Önündeki lambalar %40 ve %20 olarak kademeli yanar. Araçlarda, aracın birkaç saniye içinde ulaşacağı lambalar önceden %100 yakılır; bu sayı hıza ve lamba aralığına göre hesaplanır (aralık / hız).
+5. Hemen arkadaki lamba %20'ye iner, daha gerideki lambalar kapanır.
+6. Yaya/araç ayrımı hız eşiğiyle yapılır (varsayılan: 7 km/s üstü araç).
 
-## Expanding the ESLint configuration
+## Demo Özellikleri
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Canlı yol görünümü:** 5 lamba, ışık konileri ve yoldaki yaya ya da araç.
+- **Nesne gönderme:** Hazır butonlar ve 1–120 km/s arası hız kaydırıcısı. Yoldaki nesnenin hızı canlı değiştirilebilir; eşik aşıldığında yaya/araç türü de değişir.
+- **Zaman kontrolü:** Duraklat/devam, tek adım ilerletme (çeyrek lamba aralığı), 1x/5x/10x hız.
+- **Sürükleme:** Yola tıklayıp sürükleyerek nesne istenen konuma taşınabilir.
+- **Gündüz/gece geçişi.**
+- **Enerji paneli:** Akıllı ve normal sistemin anlık gücü, biriken tüketimi ve tasarruf yüzdesi.
+- **PWM paneli:** Her lamba için kare dalga ve ESP32 LEDC için 8 bitlik duty değeri (0–255).
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Mimari
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Arayüz veriyi tek bir ortak formattan okur. Bu sayede veri kaynağı tarayıcıdaki simülasyon, Unity simülasyonu ya da gerçek ESP32 devresi olabilir; arayüzün geri kalanı değişmez.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```json
+{
+  "source": "mock",
+  "isNight": true,
+  "object": { "type": "car", "speedKmh": 40, "position": 2.3 },
+  "lamps": [20, 100, 40, 20, 0],
+  "powerW": 3.6,
+  "normalPowerW": 10
+}
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+- `source`: `mock` (tarayıcı simülasyonu), `unity` veya `esp32`
+- `position`: Lamba cinsinden konum. `1` = 1. lambanın hizası, `2.3` = 2. ile 3. lamba arası.
+- `lamps`: 5 lambanın parlaklığı (%)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Varsayılan Parametreler
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Parametre | Değer |
+|---|---|
+| Lamba aralığı | 30 m |
+| Araç için önden aydınlatma süresi | 3 sn |
+| Yaya/araç hız eşiği | 7 km/s |
+| Lamba gücü (%100) | 100 W |
+
+### Enerji Hesabı
+
+LED gücünün PWM duty cycle ile doğru orantılı olduğu kabul edilir. Akıllı sistemin anlık gücü, her lambanın `nominal güç × parlaklık` değerlerinin toplamıdır. Karşılaştırma için "normal sistem", gece tüm lambaları %100 yakan klasik aydınlatmadır. Tüketim, simülasyon zamanı boyunca biriktirilir.
+
+## Kurulum
+
+Node.js 20.19 veya üzeri gerekir.
+
+```bash
+git clone https://github.com/MaydinKanadasi/akilli-aydinlatma.git
+cd akilli-aydinlatma
+npm install
+npm run dev
+```
+
+Ardından tarayıcıda `http://localhost:5173` adresini açın.
+
+## Proje Yapısı
 
 ```
+src/
+├── logic/
+│   ├── types.ts              # Ortak veri tipleri
+│   └── controller.ts         # Lamba kontrol kuralları ve enerji hesabı
+├── hooks/
+│   └── useMockSimulation.ts  # Tarayıcı içi simülasyon (veri kaynağı)
+├── components/
+│   ├── RoadView.tsx          # Yol, lambalar ve nesne çizimi
+│   ├── EnergyPanel.tsx       # Enerji karşılaştırması
+│   └── PwmPanel.tsx          # PWM sinyalleri
+└── App.tsx
+```
+
+## Yol Haritası
+
+- [x] Demo web arayüzü (tarayıcı içi simülasyon)
+- [ ] Unity simülasyonu
+- [ ] Unity ↔ web arayüzü WebSocket bağlantısı
+- [ ] ESP32 canlı veri entegrasyonu
+
+## Ekip
+
+| Görev | Üye |
+|---|---|
+| Web arayüzü ve Unity simülasyonu | Muhammet Aydın Kanadaşı, Bilgisayar Mühendisliği ([@MaydinKanadasi](https://github.com/MaydinKanadasi)) |
