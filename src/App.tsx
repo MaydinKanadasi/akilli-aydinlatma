@@ -16,7 +16,14 @@ function App() {
       </header>
 
       <section className="panel">
-        <RoadView state={state} />
+        <RoadView
+          state={state}
+          onDrag={sim.moveObjectTo}
+          onDraggingChange={sim.setDragging}
+        />
+        <p className="hint">
+          İpucu: Yolda bir nesne varken yolun herhangi bir yerine tıklayıp sürükleyerek onu taşıyabilirsin.
+        </p>
       </section>
 
       <section className="panel controls">

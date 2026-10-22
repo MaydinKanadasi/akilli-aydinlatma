@@ -1,60 +1,18 @@
-.road {
-  width: 100%;
-  height: auto;
-  display: block;
-  border-radius: 12px;
-}
-.road.night .sky {
-  fill: #0b1020;
-}
-.road.day .sky {
-  fill: #9fd3f5;
-}
-.asphalt {
-  fill: #2b2f3a;
-}
-.lane {
-  stroke: #d9dce4;
-  stroke-width: 2;
-  stroke-dasharray: 18 14;
-}
-.beam {
-  fill: #f5c542;
-  transition: opacity 0.3s;
-}
-.pole {
-  stroke: #9aa3b8;
-  stroke-width: 4;
-  stroke-linecap: round;
-}
-.bulb {
-  fill: #f5c542;
-  transition: opacity 0.3s;
-}
-.level {
-  fill: #e6e8ee;
-  font-size: 14px;
-  text-anchor: middle;
-}
-.road.day .level {
-  fill: #1a2233;
-}
-.lamp-no {
-  fill: #8b94ab;
-  font-size: 12px;
-  text-anchor: middle;
-}
-.car {
-  fill: #4f8cff;
-}
-.wheel {
-  fill: #111;
-}
-.person line {
-  stroke: #ff9f43;
-  stroke-width: 3;
-  stroke-linecap: round;
-}
-.person-head {
-  fill: #ff9f43;
-}
+.road { width: 100%; height: auto; display: block; border-radius: 12px; }
+.road.night .sky { fill: #0b1020; }
+.road.day .sky { fill: #9fd3f5; }
+.asphalt { fill: #2b2f3a; }
+.lane { stroke: #d9dce4; stroke-width: 2; stroke-dasharray: 18 14; }
+.beam { fill: #f5c542; transition: opacity 0.3s; }
+.pole { stroke: #9aa3b8; stroke-width: 4; stroke-linecap: round; }
+.bulb { fill: #f5c542; transition: opacity 0.3s; }
+.level { fill: #e6e8ee; font-size: 14px; text-anchor: middle; }
+.road.day .level { fill: #1a2233; }
+.lamp-no { fill: #8b94ab; font-size: 12px; text-anchor: middle; }
+.car { fill: #4f8cff; }
+.wheel { fill: #111; }
+.person line { stroke: #ff9f43; stroke-width: 3; stroke-linecap: round; }
+.person-head { fill: #ff9f43; }
+.drag-zone { cursor: grab; touch-action: none; }
+.road.dragging,
+.road.dragging .drag-zone { cursor: grabbing; }
