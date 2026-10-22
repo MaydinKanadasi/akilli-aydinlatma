@@ -16,6 +16,27 @@ interface SimState {
 }
 
 const TICK_MS = 50; // simülasyon saniyede 20 kez güncellenir
+const STEP_LAMPS = 0.25; // "Bir adım" ile nesne çeyrek lamba aralığı ilerler
+
+// Simülasyonu dt saniye ilerletir: nesneyi hareket ettirir, enerjiyi biriktirir
+function advance(prev: SimState, dt: number, config: ControllerConfig): SimState {
+  const now = computeState(prev.isNight, prev.object, "mock", config);
+
+  let object = prev.object;
+  if (object) {
+    const position =
+      object.position + ((object.speedKmh / 3.6) * dt) / config.lampSpacingM;
+    // Son lambayı geçip uzaklaşınca nesne yoldan çıkar
+    object = position > LAMP_COUNT + 1 ? null : { ...object, position };
+  }
+
+  return {
+    ...prev,
+    object,
+    smartWh: prev.smartWh + (now.powerW * dt) / 3600,
+    normalWh: prev.normalWh + (now.normalPowerW * dt) / 3600,
+  };
+}
 
 export function useMockSimulation(config: ControllerConfig = DEFAULT_CONFIG) {
   const [sim, setSim] = useState<SimState>({
@@ -29,33 +50,25 @@ export function useMockSimulation(config: ControllerConfig = DEFAULT_CONFIG) {
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    if (paused) return; // duraklatıldıysa zamanlayıcı hiç kurulmaz, her şey olduğu yerde kalır
+    if (paused) return; // duraklatıldıysa zamanlayıcı hiç kurulmaz
     const id = setInterval(() => {
       const dt = (TICK_MS / 1000) * timeScale; // simülasyonda geçen süre (sn)
-      setSim((prev) => {
-        const now = computeState(prev.isNight, prev.object, "mock", config);
-
-        let object = prev.object;
-        if (object) {
-          const position =
-            object.position +
-            ((object.speedKmh / 3.6) * dt) / config.lampSpacingM;
-          // Son lambayı geçip uzaklaşınca nesne yoldan çıkar
-          object = position > LAMP_COUNT + 1 ? null : { ...object, position };
-        }
-
-        return {
-          ...prev,
-          object,
-          smartWh: prev.smartWh + (now.powerW * dt) / 3600,
-          normalWh: prev.normalWh + (now.normalPowerW * dt) / 3600,
-        };
-      });
+      setSim((prev) => advance(prev, dt, config));
     }, TICK_MS);
     return () => clearInterval(id);
   }, [timeScale, config, paused]);
 
   const state = computeState(sim.isNight, sim.object, "mock", config);
+
+  // Nesne varsa çeyrek lamba ilerleyeceği kadar, yoksa 1 saniye ilerletir
+  const stepForward = () =>
+    setSim((prev) => {
+      const dt = prev.object
+        ? (STEP_LAMPS * config.lampSpacingM) /
+          Math.max(prev.object.speedKmh / 3.6, 0.1)
+        : 1;
+      return advance(prev, dt, config);
+    });
 
   // Nesne 1. lambanın biraz gerisinden (konum 0) yola girer
   const spawn = (speedKmh: number) =>
@@ -81,6 +94,7 @@ export function useMockSimulation(config: ControllerConfig = DEFAULT_CONFIG) {
     setTimeScale,
     paused,
     setPaused,
+    stepForward,
     spawn,
     setNight,
     resetEnergy,
