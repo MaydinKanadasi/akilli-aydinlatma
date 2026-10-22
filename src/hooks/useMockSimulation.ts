@@ -48,15 +48,16 @@ export function useMockSimulation(config: ControllerConfig = DEFAULT_CONFIG) {
   // Yaya 150 m'lik yolu gerçek zamanda ~2 dakikada geçer; demo için hızlandırıyoruz
   const [timeScale, setTimeScale] = useState(5);
   const [paused, setPaused] = useState(false);
+  const [dragging, setDragging] = useState(false); // nesne fareyle tutuluyorsa simülasyon onu hareket ettirmez
 
   useEffect(() => {
-    if (paused) return; // duraklatıldıysa zamanlayıcı hiç kurulmaz
+    if (paused || dragging) return; // duraklatıldıysa ya da sürükleniyorsa zamanlayıcı kurulmaz
     const id = setInterval(() => {
       const dt = (TICK_MS / 1000) * timeScale; // simülasyonda geçen süre (sn)
       setSim((prev) => advance(prev, dt, config));
     }, TICK_MS);
     return () => clearInterval(id);
-  }, [timeScale, config, paused]);
+  }, [timeScale, config, paused, dragging]);
 
   const state = computeState(sim.isNight, sim.object, "mock", config);
 
@@ -69,6 +70,20 @@ export function useMockSimulation(config: ControllerConfig = DEFAULT_CONFIG) {
         : 1;
       return advance(prev, dt, config);
     });
+
+  // Sürükleme sırasında nesneyi verilen konuma taşır (yolun dışına çıkamaz)
+  const moveObjectTo = (position: number) =>
+    setSim((prev) =>
+      prev.object
+        ? {
+            ...prev,
+            object: {
+              ...prev.object,
+              position: Math.min(Math.max(position, 0), LAMP_COUNT + 1),
+            },
+          }
+        : prev,
+    );
 
   // Nesne 1. lambanın biraz gerisinden (konum 0) yola girer
   const spawn = (speedKmh: number) =>
@@ -95,6 +110,8 @@ export function useMockSimulation(config: ControllerConfig = DEFAULT_CONFIG) {
     paused,
     setPaused,
     stepForward,
+    setDragging,
+    moveObjectTo,
     spawn,
     setNight,
     resetEnergy,
