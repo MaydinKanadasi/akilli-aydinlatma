@@ -1,5 +1,6 @@
 import { RoadView } from "./components/RoadView";
 import { EnergyPanel } from "./components/EnergyPanel";
+import { PwmPanel } from "./components/PwmPanel";
 import { useMockSimulation } from "./hooks/useMockSimulation";
 import "./App.css";
 
@@ -47,6 +48,10 @@ function App() {
 
       <section className="panel">
         <EnergyPanel state={state} energy={sim.energy} onReset={sim.resetEnergy} />
+      </section>
+
+      <section className="panel">
+        <PwmPanel lamps={state.lamps} />
       </section>
     </main>
   );
