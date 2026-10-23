@@ -113,7 +113,7 @@ function App() {
       </section>
 
       <section className="panel">
-        <PwmPanel lamps={state.lamps} />
+        <PwmPanel lamps={state.lamps} running={!sim.paused} />
       </section>
     </main>
   );

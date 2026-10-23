@@ -80,3 +80,7 @@ export function computeState(
   const normalPowerW = isNight ? LAMP_COUNT * config.lampPowerW : 0;
   return { source, isNight, object, lamps, powerW, normalPowerW };
 }
+
+// ESP32 LEDC PWM ayarları (donanım tarafıyla aynı olmalı)
+export const PWM_FREQ_HZ = 5000;
+export const PWM_BITS = 8;

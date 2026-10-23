@@ -23,13 +23,14 @@ ESP32 tabanlı akıllı sokak aydınlatma sisteminin web arayüzü ve simülasyo
 
 ## Demo Özellikleri
 
-- **Canlı yol görünümü:** 5 lamba, ışık konileri ve yoldaki yaya ya da araç.
+- **Canlı yol sahnesi:** Gece yıldızlı gökyüzü ve ay, gündüz güneş ve bulutlar; kaldırımlar ve şeritler. Lambalarda parlama, ışık konisi ve yolda ışık halkası. Kaldırımda yürüyen yaya, jantları dönen ve gece farları yanan araç.
 - **Nesne gönderme:** Hazır butonlar ve 1–120 km/s arası hız kaydırıcısı. Yoldaki nesnenin hızı canlı değiştirilebilir; eşik aşıldığında yaya/araç türü de değişir.
 - **Zaman kontrolü:** Duraklat/devam, tek adım ilerletme (çeyrek lamba aralığı), 1x/5x/10x hız.
 - **Sürükleme:** Yola tıklayıp sürükleyerek nesne istenen konuma taşınabilir.
 - **Gündüz/gece geçişi.**
 - **Enerji paneli:** Akıllı ve normal sistemin anlık gücü, biriken tüketimi ve tasarruf yüzdesi.
-- **PWM paneli:** Her lamba için kare dalga ve ESP32 LEDC için 8 bitlik duty değeri (0–255).
+- **Zaman grafikleri:** Son ~30 saniyede anlık güç (tasarruf alanı boyalı) ve 5 lambanın parlaklığı. Fareyle grafik üzerinde gezinerek o anki değerler okunabilir.
+- **PWM paneli:** Osiloskop görünümünde akan kare dalgalar, lamba başına ampul göstergesi, duty çubuğu ve ESP32 LEDC için 8 bitlik duty değeri (0–255).
 
 ## Mimari
 
@@ -58,6 +59,8 @@ Arayüz veriyi tek bir ortak formattan okur. Bu sayede veri kaynağı tarayıcı
 | Araç için önden aydınlatma süresi | 3 sn |
 | Yaya/araç hız eşiği | 7 km/s |
 | Lamba gücü (%100) | 100 W |
+| PWM frekansı (ESP32 LEDC) | 5 kHz (periyot 200 µs) |
+| PWM çözünürlüğü | 8 bit (0–255) |
 
 ### Enerji Hesabı
 
@@ -82,19 +85,22 @@ Ardından tarayıcıda `http://localhost:5173` adresini açın.
 src/
 ├── logic/
 │   ├── types.ts              # Ortak veri tipleri
-│   └── controller.ts         # Lamba kontrol kuralları ve enerji hesabı
+│   └── controller.ts         # Lamba kontrol kuralları, enerji hesabı, PWM ayarları
 ├── hooks/
-│   └── useMockSimulation.ts  # Tarayıcı içi simülasyon (veri kaynağı)
+│   └── useMockSimulation.ts  # Tarayıcı içi simülasyon (veri kaynağı) ve geçmiş kaydı
 ├── components/
-│   ├── RoadView.tsx          # Yol, lambalar ve nesne çizimi
+│   ├── RoadView.tsx          # Yol sahnesi, lambalar, yaya ve araç
 │   ├── EnergyPanel.tsx       # Enerji karşılaştırması
-│   └── PwmPanel.tsx          # PWM sinyalleri
+│   ├── ChartsPanel.tsx       # Zaman grafikleri
+│   ├── LineChart.tsx         # Ortak çizgi grafik bileşeni
+│   └── PwmPanel.tsx          # Osiloskop görünümlü PWM sinyalleri
 └── App.tsx
 ```
 
 ## Yol Haritası
 
 - [x] Demo web arayüzü (tarayıcı içi simülasyon)
+- [x] Görsel revizyon: sahne, zaman grafikleri, PWM paneli
 - [ ] Unity simülasyonu
 - [ ] Unity ↔ web arayüzü WebSocket bağlantısı
 - [ ] ESP32 canlı veri entegrasyonu
