@@ -1,0 +1,23 @@
+.chart { display: grid; gap: 8px; min-width: 0; }
+.chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.chart-head h3 { font-size: 0.95rem; margin: 0; font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.78rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; }
+.chart-svg { width: 100%; height: auto; display: block; background: #121a2b; border-radius: 10px; }
+.chart-svg .grid { stroke: #26304a; stroke-width: 1; }
+.chart-svg .axis-label { fill: #8b94ab; font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart-svg .axis-label.end { text-anchor: end; }
+.chart-svg .series { fill: none; stroke-width: 2; stroke-linejoin: round; }
+.chart-svg .band { fill: #4ade80; opacity: 0.15; }
+.chart-svg .cursor { stroke: #e6e8ee; stroke-width: 1; stroke-dasharray: 3 3; }
+.chart-svg .tip-bg { fill: #0f1420; stroke: #26304a; }
+.chart-svg .tip-text { fill: #e6e8ee; font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart-svg .tip-text.muted { fill: #8b94ab; }
+.chart-svg .empty { fill: #8b94ab; font-size: 13px; text-anchor: middle; }

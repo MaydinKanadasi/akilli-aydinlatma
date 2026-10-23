@@ -1,4 +1,5 @@
-.pwm { display: grid; gap: 10px; }
+.pwm { position: relative; display: grid; gap: 10px; }
+.pwm-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
 .pwm-head {
   display: flex;
   align-items: baseline;
@@ -7,20 +8,49 @@
   flex-wrap: wrap;
 }
 .pwm-head h2 { font-size: 1.1rem; margin: 0; }
-.pwm-note { font-size: 0.8rem; color: var(--muted); }
+.pwm-note { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
 .pwm-row {
   display: grid;
-  grid-template-columns: 70px 1fr 90px;
+  grid-template-columns: 28px 64px minmax(0, 1fr) 120px;
   align-items: center;
   gap: 12px;
   font-size: 0.9rem;
 }
-.pwm-wave { width: 100%; height: 36px; background: #121a2b; border-radius: 8px; }
-.pwm-wave path {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 2;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
+
+/* Ampul */
+.pwm-bulb { width: 28px; height: 28px; overflow: visible; }
+.pwm-bulb .fade { transition: opacity 0.3s; }
+.bulb-glass { fill: #2a3044; stroke: #3a4258; }
+.bulb-light { fill: #ffe9a8; transition: opacity 0.3s; }
+.bulb-base { fill: #6b7389; }
+
+/* Osiloskop */
+.scope {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: #04100b;
+  border: 1px solid #12301f;
+  border-radius: 8px;
 }
-.pwm-value { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.scope-grid { stroke: #0f2a1e; stroke-width: 1; }
+.scope-grid.mid { stroke-dasharray: 4 4; }
+.scope-wave { fill: none; stroke: #39ff88; stroke-width: 2; stroke-linejoin: round; }
+.scope-flow { animation: flow 0.8s linear infinite; }
+@keyframes flow { from { transform: translateX(0); } to { transform: translateX(100px); } }
+.pwm.still .scope-flow { animation-play-state: paused; }
+
+/* Duty çubuğu */
+.pwm-duty { display: grid; gap: 4px; }
+.duty-bar { height: 6px; background: #121a2b; border-radius: 999px; overflow: hidden; }
+.duty-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.3s; }
+.pwm-value { text-align: right; font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 560px) {
+  .pwm-row { grid-template-columns: 24px 52px minmax(0, 1fr) 88px; gap: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scope-flow { animation: none; }
+}

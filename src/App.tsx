@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { RoadView } from "./components/RoadView";
 import { EnergyPanel } from "./components/EnergyPanel";
+import { ChartsPanel } from "./components/ChartsPanel";
 import { PwmPanel } from "./components/PwmPanel";
 import { useMockSimulation } from "./hooks/useMockSimulation";
 import { DEFAULT_CONFIG, classifyBySpeed } from "./logic/controller";
@@ -36,6 +37,7 @@ function App() {
           state={state}
           onDrag={sim.moveObjectTo}
           onDraggingChange={sim.setDragging}
+          moving={!sim.paused}
         />
         <p className="hint">
           İpucu: Yolda bir nesne varken yolun herhangi bir yerine tıklayıp sürükleyerek onu taşıyabilirsin.
@@ -107,7 +109,11 @@ function App() {
       </section>
 
       <section className="panel">
-        <PwmPanel lamps={state.lamps} />
+        <ChartsPanel history={sim.history} />
+      </section>
+
+      <section className="panel">
+        <PwmPanel lamps={state.lamps} running={!sim.paused} />
       </section>
     </main>
   );
