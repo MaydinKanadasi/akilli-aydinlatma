@@ -36,6 +36,7 @@ function App() {
           state={state}
           onDrag={sim.moveObjectTo}
           onDraggingChange={sim.setDragging}
+          moving={!sim.paused}
         />
         <p className="hint">
           İpucu: Yolda bir nesne varken yolun herhangi bir yerine tıklayıp sürükleyerek onu taşıyabilirsin.

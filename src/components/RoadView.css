@@ -1,18 +1,74 @@
 .road { width: 100%; height: auto; display: block; border-radius: 12px; }
-.road.night .sky { fill: #0b1020; }
-.road.day .sky { fill: #9fd3f5; }
-.asphalt { fill: #2b2f3a; }
+.fade { transition: opacity 0.3s; }
+
+/* Gökyüzü */
+.star { fill: #fff; animation: twinkle 2.4s ease-in-out infinite alternate; }
+@keyframes twinkle { from { opacity: 0.25; } to { opacity: 1; } }
+.moon { fill: #ece8d6; }
+.crater { fill: #cfc9b0; }
+.sun { fill: #ffd84d; }
+.cloud { fill: #fff; opacity: 0.85; }
+
+/* Kaldırım ve yol */
+.paving-tile { fill: #343946; }
+.paving-joint { stroke: #2a2e39; stroke-width: 1; }
+.road.day .paving-tile { fill: #b7bcc6; }
+.road.day .paving-joint { stroke: #a2a8b3; }
+.curb { fill: #5b6172; }
+.road.day .curb { fill: #8e95a3; }
+.asphalt { fill: #262a33; }
+.road.day .asphalt { fill: #4a4f5a; }
+.edge { stroke: #c9ccd4; stroke-width: 1.5; opacity: 0.6; }
 .lane { stroke: #d9dce4; stroke-width: 2; stroke-dasharray: 18 14; }
-.beam { fill: #f5c542; transition: opacity 0.3s; }
-.pole { stroke: #9aa3b8; stroke-width: 4; stroke-linecap: round; }
-.bulb { fill: #f5c542; transition: opacity 0.3s; }
-.level { fill: #e6e8ee; font-size: 14px; text-anchor: middle; }
-.road.day .level { fill: #1a2233; }
+
+/* Lambalar */
+.pole { fill: none; stroke: #8b93a7; stroke-width: 4; stroke-linecap: round; }
+.fixture { fill: #5d657a; }
+.bulb { fill: #ffe9a8; transition: opacity 0.3s; }
+.level-bg { fill: rgba(15, 20, 32, 0.7); stroke: #26304a; }
+.level-bg.on { stroke: #f5c542; }
+.level { fill: #8b94ab; font-size: 13px; font-weight: 600; text-anchor: middle; }
+.level.on { fill: #f5c542; }
+.road.day .level-bg { fill: rgba(255, 255, 255, 0.75); stroke: #9aa3b8; }
+.road.day .level { fill: #3a4256; }
 .lamp-no { fill: #8b94ab; font-size: 12px; text-anchor: middle; }
-.car { fill: #4f8cff; }
-.wheel { fill: #111; }
-.person line { stroke: #ff9f43; stroke-width: 3; stroke-linecap: round; }
+
+/* Yaya */
+.shadow { fill: #000; opacity: 0.35; }
+.person line { stroke: #ff9f43; stroke-width: 2.6; stroke-linecap: round; }
 .person-head { fill: #ff9f43; }
+.limb { transform-box: fill-box; transform-origin: top center; }
+.swing-a { animation: swing 0.5s ease-in-out infinite alternate; }
+.swing-b { animation: swing 0.5s ease-in-out infinite alternate-reverse; }
+@keyframes swing { from { transform: rotate(28deg); } to { transform: rotate(-28deg); } }
+
+/* Araç */
+.car-body { fill: #4f8cff; }
+.car-window { fill: #bfe3ff; opacity: 0.85; }
+.road.night .car-window { fill: #6b8bb3; }
+.headlamp { fill: #e8e2c4; }
+.headlamp.on { fill: #fff4c2; }
+.taillamp { fill: #ff4d4d; }
+.tire { fill: #15171c; }
+.hub { fill: #9aa3b8; }
+.spokes line { stroke: #4b5163; stroke-width: 1.2; }
+.spokes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spin 0.4s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Duraklatılınca ya da sürüklenirken animasyonlar durur */
+.road.still .swing-a,
+.road.still .swing-b,
+.road.still .spokes { animation-play-state: paused; }
+
+/* Sürükleme */
 .drag-zone { cursor: grab; touch-action: none; }
 .road.dragging,
 .road.dragging .drag-zone { cursor: grabbing; }
+
+@media (prefers-reduced-motion: reduce) {
+  .star, .swing-a, .swing-b, .spokes { animation: none; }
+}
