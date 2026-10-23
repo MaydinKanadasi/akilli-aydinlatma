@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { TrackedObject } from "../logic/types";
+import type { HistorySample, TrackedObject } from "../logic/types";
 import {
   DEFAULT_CONFIG,
   LAMP_COUNT,
@@ -13,12 +13,15 @@ interface SimState {
   object: TrackedObject | null;
   smartWh: number; // akıllı sistemin biriken tüketimi
   normalWh: number; // aynı sürede normal sistemin tüketimi
+  timeSec: number; // simülasyon saati (sn)
+  history: HistorySample[]; // zaman grafikleri için son kayıtlar
 }
 
 const TICK_MS = 50; // simülasyon saniyede 20 kez güncellenir
 const STEP_LAMPS = 0.25; // "Bir adım" ile nesne çeyrek lamba aralığı ilerler
+const HISTORY_LEN = 600; // 600 kayıt = gerçek zamanda yaklaşık 30 saniye
 
-// Simülasyonu dt saniye ilerletir: nesneyi hareket ettirir, enerjiyi biriktirir
+// Simülasyonu dt saniye ilerletir: nesneyi hareket ettirir, enerjiyi biriktirir, kayıt ekler
 function advance(prev: SimState, dt: number, config: ControllerConfig): SimState {
   const now = computeState(prev.isNight, prev.object, "mock", config);
 
@@ -30,11 +33,19 @@ function advance(prev: SimState, dt: number, config: ControllerConfig): SimState
     object = position > LAMP_COUNT + 1 ? null : { ...object, position };
   }
 
+  const history = [
+    ...prev.history,
+    { t: prev.timeSec, lamps: now.lamps, powerW: now.powerW, normalPowerW: now.normalPowerW },
+  ];
+  if (history.length > HISTORY_LEN) history.splice(0, history.length - HISTORY_LEN);
+
   return {
     ...prev,
     object,
     smartWh: prev.smartWh + (now.powerW * dt) / 3600,
     normalWh: prev.normalWh + (now.normalPowerW * dt) / 3600,
+    timeSec: prev.timeSec + dt,
+    history,
   };
 }
 
@@ -44,6 +55,8 @@ export function useMockSimulation(config: ControllerConfig = DEFAULT_CONFIG) {
     object: null,
     smartWh: 0,
     normalWh: 0,
+    timeSec: 0,
+    history: [],
   });
   // Yaya 150 m'lik yolu gerçek zamanda ~2 dakikada geçer; demo için hızlandırıyoruz
   const [timeScale, setTimeScale] = useState(5);
@@ -114,12 +127,14 @@ export function useMockSimulation(config: ControllerConfig = DEFAULT_CONFIG) {
   const setNight = (isNight: boolean) =>
     setSim((prev) => ({ ...prev, isNight }));
 
+  // Biriken tüketimi ve grafik geçmişini sıfırlar
   const resetEnergy = () =>
-    setSim((prev) => ({ ...prev, smartWh: 0, normalWh: 0 }));
+    setSim((prev) => ({ ...prev, smartWh: 0, normalWh: 0, history: [] }));
 
   return {
     state,
     energy: { smartWh: sim.smartWh, normalWh: sim.normalWh },
+    history: sim.history,
     timeScale,
     setTimeScale,
     paused,

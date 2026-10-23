@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { RoadView } from "./components/RoadView";
 import { EnergyPanel } from "./components/EnergyPanel";
+import { ChartsPanel } from "./components/ChartsPanel";
 import { PwmPanel } from "./components/PwmPanel";
 import { useMockSimulation } from "./hooks/useMockSimulation";
 import { DEFAULT_CONFIG, classifyBySpeed } from "./logic/controller";
@@ -105,6 +106,10 @@ function App() {
 
       <section className="panel">
         <EnergyPanel state={state} energy={sim.energy} onReset={sim.resetEnergy} />
+      </section>
+
+      <section className="panel">
+        <ChartsPanel history={sim.history} />
       </section>
 
       <section className="panel">
