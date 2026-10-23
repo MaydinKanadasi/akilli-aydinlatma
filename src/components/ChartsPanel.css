@@ -1,0 +1,8 @@
+.charts { display: grid; gap: 12px; }
+.charts h2 { font-size: 1.1rem; margin: 0; }
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+.charts-note { margin: 0; font-size: 0.8rem; color: var(--muted); }

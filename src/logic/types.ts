@@ -19,3 +19,11 @@ export interface SystemState {
   powerW: number; // akıllı sistemin anlık gücü
   normalPowerW: number; // aynı anda tüm lambalar %100 yansaydı çekilecek güç
 }
+
+// Zaman grafikleri için simülasyonun belli bir andaki durumu
+export interface HistorySample {
+  t: number; // simülasyon zamanı (sn)
+  lamps: number[];
+  powerW: number;
+  normalPowerW: number;
+}
