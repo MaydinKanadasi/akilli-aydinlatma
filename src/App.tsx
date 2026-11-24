@@ -32,89 +32,98 @@ function App() {
         <span className="badge">Kaynak: simülasyon</span>
       </header>
 
-      <section className="panel">
-        <RoadView
-          state={state}
-          onDrag={sim.moveObjectTo}
-          onDraggingChange={sim.setDragging}
-          moving={!sim.paused}
-        />
-        <p className="hint">
-          İpucu: Yolda bir nesne varken yolun herhangi bir yerine tıklayıp sürükleyerek onu taşıyabilirsin.
-        </p>
-      </section>
-
-      <section className="panel controls">
-        <label className="speed">
-          <span>Hız</span>
-          <input
-            type="range"
-            min={1}
-            max={120}
-            value={speed}
-            onChange={(e) => changeSpeed(Number(e.target.value))}
+      <div className="col">
+        <section className="panel">
+          <RoadView
+            state={state}
+            onDrag={sim.moveObjectTo}
+            onDraggingChange={sim.setDragging}
+            moving={!sim.paused}
           />
-          <strong>{speed} km/s</strong>
-        </label>
-        <span className="speed-type">
-          {speedType === "car" ? "🚗 Araç" : "🚶 Yaya"} (eşik{" "}
-          {DEFAULT_CONFIG.pedestrianMaxKmh} km/s)
-        </span>
-        <button onClick={() => send(speed)}>Bu hızla gönder</button>
-      </section>
+          <p className="hint">
+            İpucu: Yolda bir nesne varken yolun herhangi bir yerine tıklayıp
+            sürükleyerek onu taşıyabilirsin.
+          </p>
+        </section>
 
-      <section className="panel controls">
-        <button onClick={() => send(5)}>🚶 Yaya (5 km/s)</button>
-        <button onClick={() => send(50)}>🚗 Araç (50 km/s)</button>
-        <button onClick={() => send(90)}>🚗 Hızlı araç (90 km/s)</button>
-        <button onClick={() => sim.setNight(!state.isNight)}>
-          {state.isNight ? "☀️ Gündüze geç" : "🌙 Geceye geç"}
-        </button>
-      </section>
-
-      <section className="panel controls">
-        <button onClick={() => sim.setPaused(!sim.paused)}>
-          {sim.paused ? "▶️ Devam et" : "⏸️ Duraklat"}
-        </button>
-        <button
-          onClick={sim.stepForward}
-          disabled={!sim.paused}
-          title="Duraklatılmışken nesneyi çeyrek lamba aralığı ilerletir"
-        >
-          ⏭️ Bir adım
-        </button>
-        {[1, 5, 10].map((scale) => (
-          <button
-            key={scale}
-            className={sim.timeScale === scale ? "active" : ""}
-            onClick={() => sim.setTimeScale(scale)}
-          >
-            {scale}x
-          </button>
-        ))}
-        {sim.paused && (
-          <span className="paused-note">Simülasyon duraklatıldı</span>
-        )}
-        {state.object && (
-          <span className="sim-info">
-            {state.object.type === "car" ? "Araç" : "Yaya"} ·{" "}
-            {state.object.speedKmh} km/s · konum{" "}
-            {state.object.position.toFixed(2)}
+        <section className="panel controls">
+          <label className="speed">
+            <span>Hız</span>
+            <input
+              type="range"
+              min={1}
+              max={120}
+              value={speed}
+              onChange={(e) => changeSpeed(Number(e.target.value))}
+            />
+            <strong>{speed} km/s</strong>
+          </label>
+          <span className="speed-type">
+            {speedType === "car" ? "🚗 Araç" : "🚶 Yaya"} (eşik{" "}
+            {DEFAULT_CONFIG.pedestrianMaxKmh} km/s)
           </span>
-        )}
-      </section>
+          <button onClick={() => send(speed)}>Bu hızla gönder</button>
+        </section>
 
-      <section className="panel">
-        <EnergyPanel state={state} energy={sim.energy} onReset={sim.resetEnergy} />
-      </section>
+        <section className="panel controls">
+          <button onClick={() => send(5)}>🚶 Yaya (5 km/s)</button>
+          <button onClick={() => send(50)}>🚗 Araç (50 km/s)</button>
+          <button onClick={() => send(90)}>🚗 Hızlı araç (90 km/s)</button>
+          <button onClick={() => sim.setNight(!state.isNight)}>
+            {state.isNight ? "☀️ Gündüze geç" : "🌙 Geceye geç"}
+          </button>
+        </section>
 
-      <section className="panel">
-        <ChartsPanel history={sim.history} />
-      </section>
+        <section className="panel controls">
+          <button onClick={() => sim.setPaused(!sim.paused)}>
+            {sim.paused ? "▶️ Devam et" : "⏸️ Duraklat"}
+          </button>
+          <button
+            onClick={sim.stepForward}
+            disabled={!sim.paused}
+            title="Duraklatılmışken nesneyi çeyrek lamba aralığı ilerletir"
+          >
+            ⏭️ Bir adım
+          </button>
+          {[1, 5, 10].map((scale) => (
+            <button
+              key={scale}
+              className={sim.timeScale === scale ? "active" : ""}
+              onClick={() => sim.setTimeScale(scale)}
+            >
+              {scale}x
+            </button>
+          ))}
+          {sim.paused && (
+            <span className="paused-note">Simülasyon duraklatıldı</span>
+          )}
+          {state.object && (
+            <span className="sim-info">
+              {state.object.type === "car" ? "Araç" : "Yaya"} ·{" "}
+              {state.object.speedKmh} km/s · konum{" "}
+              {state.object.position.toFixed(2)}
+            </span>
+          )}
+        </section>
+      </div>
 
-      <section className="panel">
-        <PwmPanel lamps={state.lamps} running={!sim.paused} />
-      </section>
+      <div className="col">
+        <section className="panel">
+          <EnergyPanel
+            state={state}
+            energy={sim.energy}
+            onReset={sim.resetEnergy}
+          />
+        </section>
+
+        <section className="panel">
+          <ChartsPanel history={sim.history} />
+        </section>
+
+        <section className="panel">
+          <PwmPanel lamps={state.lamps} running={!sim.paused} />
+        </section>
+      </div>
     </main>
   );
 }
