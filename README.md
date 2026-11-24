@@ -41,9 +41,9 @@ Arayüz veriyi tek bir ortak formattan okur. Bu sayede veri kaynağı tarayıcı
   "source": "mock",
   "isNight": true,
   "object": { "type": "car", "speedKmh": 40, "position": 2.3 },
-  "lamps": [20, 100, 40, 20, 0],
-  "powerW": 3.6,
-  "normalPowerW": 10
+  "lamps": [20, 100, 100, 100, 40],
+  "powerW": 360,
+  "normalPowerW": 500
 }
 ```
 
@@ -101,6 +101,7 @@ src/
 
 - [x] Demo web arayüzü (tarayıcı içi simülasyon)
 - [x] Görsel revizyon: sahne, zaman grafikleri, PWM paneli
+- [ ] LLM asistanı (doğal dille kontrol ve enerji analizi)
 - [ ] Unity simülasyonu
 - [ ] Unity ↔ web arayüzü WebSocket bağlantısı
 - [ ] ESP32 canlı veri entegrasyonu
