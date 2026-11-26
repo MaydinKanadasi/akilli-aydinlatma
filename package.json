@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test-vektorleri": "node scripts/test-vektorleri.ts",
+    "chat-deneme": "node scripts/chat-deneme.ts"
   },
   "dependencies": {
     "react": "^19.3.1",
