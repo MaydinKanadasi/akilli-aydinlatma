@@ -23,10 +23,15 @@ const state = {
 let lastLlmBody: Record<string, unknown> | null = null;
 let llmReply: unknown = null;
 let llmStatus = 200;
+// Doluysa sıradaki cevaplar bu kuyruktan verilir: [durum, gövde]
+let llmQueue: [number, unknown][] = [];
+let llmCalls = 0;
 
 globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
+  llmCalls++;
   lastLlmBody = JSON.parse(String(init?.body));
-  return new Response(JSON.stringify(llmReply), { status: llmStatus });
+  const [status, body] = llmQueue.shift() ?? [llmStatus, llmReply];
+  return new Response(JSON.stringify(body), { status });
 }) as typeof fetch;
 
 function request(body: unknown, ip = "1.1.1.1"): Request {
@@ -43,6 +48,8 @@ let passed = 0;
 async function test(name: string, fn: () => Promise<void>) {
   _resetRateLimit();
   llmStatus = 200;
+  llmQueue = [];
+  llmCalls = 0;
   await fn();
   passed++;
   console.log("✓", name);
@@ -125,6 +132,27 @@ await test("Servis 429 verirse anlaşılır hata", async () => {
   const res = await POST(request(ask("selam")));
   assert.equal(res.status, 429);
   assert.match(((await res.json()) as { error: string }).error, /Ücretsiz kullanım sınırı/);
+});
+
+await test("tool_use_failed gelirse bir kez yeniden dener (temperature 0)", async () => {
+  const failed = { error: { message: "Failed to call a function", type: "invalid_request_error", code: "tool_use_failed" } };
+  llmQueue = [
+    [400, failed],
+    [200, { choices: [{ message: { tool_calls: [{ function: { name: "set_night", arguments: '{"isNight":false}' } }] } }] }],
+  ];
+  const res = await POST(request(ask("gündüze geç")));
+  assert.equal(res.status, 200);
+  assert.equal(llmCalls, 2);
+  assert.equal((lastLlmBody as unknown as { temperature: number }).temperature, 0);
+  assert.deepEqual(((await res.json()) as ChatResponse).actions, [{ name: "set_night", args: { isNight: false } }]);
+});
+
+await test("Diğer hatalarda HTTP kodu ve hata kodu mesajda, yeniden deneme yok", async () => {
+  llmQueue = [[401, { error: { message: "Invalid API Key", type: "invalid_request_error", code: "invalid_api_key" } }]];
+  const res = await POST(request(ask("selam")));
+  assert.equal(res.status, 502);
+  assert.equal(llmCalls, 1);
+  assert.match(((await res.json()) as { error: string }).error, /HTTP 401, invalid_api_key/);
 });
 
 await test("Anahtar yoksa 500", async () => {

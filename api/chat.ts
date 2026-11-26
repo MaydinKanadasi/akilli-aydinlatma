@@ -333,6 +333,20 @@ interface LlmResponse {
   choices?: { message?: { content?: string | null; tool_calls?: LlmToolCall[] } }[];
 }
 
+// Servisin hata cevabından kısa hata kodunu çıkarır (ör. "tool_use_failed", "invalid_api_key")
+// ve ayrıntıyı sunucu kaydına yazar
+async function errorCode(res: Response): Promise<string> {
+  const text = await res.text().catch(() => "");
+  console.error("LLM hatası", res.status, text.slice(0, 1000));
+  try {
+    const e = (JSON.parse(text) as { error?: { code?: unknown; type?: unknown } }).error;
+    const code = typeof e?.code === "string" ? e.code : typeof e?.type === "string" ? e.type : "";
+    return code.replace(/[^\w.-]/g, "").slice(0, 60);
+  } catch {
+    return "";
+  }
+}
+
 // ---------- Uç nokta ----------
 
 export async function POST(request: Request): Promise<Response> {
@@ -361,21 +375,27 @@ export async function POST(request: Request): Promise<Response> {
   const parsed = parseRequest(raw);
   if (typeof parsed === "string") return error(parsed, 400);
 
-  let llm: Response;
-  try {
-    llm = await fetch(provider.url, {
+  const messages = [{ role: "system", content: systemPrompt(parsed.state) }, ...parsed.messages];
+  const callLlm = (temperature: number) =>
+    fetch(provider.url, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model,
-        temperature: 0.3,
-        max_tokens: 400,
-        tools: TOOLS,
-        tool_choice: "auto",
-        messages: [{ role: "system", content: systemPrompt(parsed.state) }, ...parsed.messages],
-      }),
+      body: JSON.stringify({ model, temperature, max_tokens: 400, tools: TOOLS, tool_choice: "auto", messages }),
       signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
     });
+
+  let llm: Response;
+  let errCode = "";
+  try {
+    llm = await callLlm(0.3);
+    // Model araç çağrısını bozuk üretirse Groq 400 "tool_use_failed" döner: bir kez daha, kararlı ayarla dene
+    if (!llm.ok && llm.status !== 429) {
+      errCode = await errorCode(llm);
+      if (errCode === "tool_use_failed") {
+        llm = await callLlm(0);
+        if (!llm.ok) errCode = await errorCode(llm);
+      }
+    }
   } catch {
     return error("Yapay zekâ servisine ulaşılamadı. Lütfen tekrar deneyin.", 502);
   }
@@ -383,8 +403,8 @@ export async function POST(request: Request): Promise<Response> {
   if (llm.status === 429)
     return error("Ücretsiz kullanım sınırına ulaşıldı. Lütfen biraz sonra tekrar deneyin.", 429);
   if (!llm.ok) {
-    console.error("LLM hatası", llm.status, (await llm.text()).slice(0, 500));
-    return error("Yapay zekâ servisi hata verdi. Lütfen tekrar deneyin.", 502);
+    // Hata türü (anahtar ya da istem değil) kullanıcıya da gösterilir; teşhisi kolaylaştırır
+    return error(`Yapay zekâ servisi hata verdi (HTTP ${llm.status}${errCode ? `, ${errCode}` : ""}). Lütfen tekrar deneyin.`, 502);
   }
 
   const data = (await llm.json()) as LlmResponse;
