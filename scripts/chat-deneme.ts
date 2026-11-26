@@ -1,7 +1,7 @@
 // /api/chat fonksiyonunu sahte bir LLM servisine karşı dener (gerçek anahtar ve ağ kullanılmaz).
 // Çalıştırma: npm run -s chat-deneme
 import assert from "node:assert/strict";
-import { POST, _resetRateLimit, _resetResolvedModel, type ChatResponse } from "../api/chat.ts";
+import { POST, _resetRateLimit, _resetResolvedModel, plainText, type ChatResponse } from "../api/chat.ts";
 
 process.env.GROQ_API_KEY = "sahte-anahtar";
 delete process.env.LLM_PROVIDER;
@@ -212,6 +212,15 @@ await test("model_not_found ve uygun yedek yoksa kullanılabilir modeller listel
   const msg = ((await res.json()) as { error: string }).error;
   assert.match(msg, /yeni-model-x/);
   assert.doesNotMatch(msg, /whisper/);
+});
+
+await test("Markdown işaretleri cevaptan temizlenir", async () => {
+  assert.equal(plainText("Şu ana kadar **68,06 Wh** tasarruf ettik!"), "Şu ana kadar 68,06 Wh tasarruf ettik!");
+  assert.equal(plainText("## Özet\n*önemli* ve __kalın__"), "Özet\nönemli ve kalın");
+  assert.equal(plainText("2 * 3 = 6"), "2 * 3 = 6");
+  llmReply = { choices: [{ message: { content: "**%99,1** tasarruf" } }] };
+  const body = (await (await POST(request(ask("tasarruf?")))).json()) as ChatResponse;
+  assert.equal(body.reply, "%99,1 tasarruf");
 });
 
 await test("Anahtar yoksa 500", async () => {

@@ -225,6 +225,7 @@ function stateSummary(s: SimState) {
 
 function systemPrompt(s: SimState): string {
   return `Sen LUMA'sın: akıllı sokak aydınlatması simülasyonunun asistanı. Her zaman Türkçe, kısa (en fazla 3 cümle) ve samimi cevap ver.
+Cevabı düz metin olarak yaz: Markdown (**, #, liste işaretleri) kullanma. Sayıları Türkçe biçimde yaz (ondalık ayırıcı virgül: 68,06 Wh, %99,1).
 
 Sistem: ESP32 tabanlı, 5 sokak lambası, lambalar arası 30 m, lamba gücü %100'de 100 W. Lambalar PWM ile (5 kHz, 8 bit) kısılır.
 Kurallar:
@@ -330,6 +331,16 @@ interface LlmResponse {
   choices?: { message?: { content?: string | null; tool_calls?: LlmToolCall[] } }[];
 }
 
+// Panel Markdown göstermez: modelin yine de kullandığı kalın/italik ve başlık işaretlerini kaldırır
+export function plainText(s: string): string {
+  return s
+    .replace(/\*\*(.+?)\*\*/gs, "$1")
+    .replace(/__(.+?)__/gs, "$1")
+    .replace(/(^|\s)\*(\S(?:.*?\S)?)\*(?=\s|[.,!?;:]|$)/g, "$1$2")
+    .replace(/^#{1,6}\s+/gm, "")
+    .trim();
+}
+
 // Servisin hata cevabından kısa hata kodunu çıkarır (ör. "tool_use_failed", "invalid_api_key")
 // ve ayrıntıyı sunucu kaydına yazar
 async function errorCode(res: Response): Promise<string> {
@@ -421,7 +432,7 @@ export async function POST(request: Request): Promise<Response> {
   const data = (await llm.json()) as LlmResponse;
   const message = data.choices?.[0]?.message;
   const actions = (message?.tool_calls ?? []).flatMap((c) => toActions(c.function?.name ?? "", c.function?.arguments));
-  const content = message?.content?.trim() ?? "";
+  const content = plainText(message?.content ?? "");
   const reply = content || (actions.length > 0 ? describe(actions) : "Bunu anlayamadım, başka şekilde sorar mısın?");
 
   const body: ChatResponse = { reply, actions, model };
