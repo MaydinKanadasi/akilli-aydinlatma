@@ -46,6 +46,7 @@ export type ChatAction =
 export interface ChatResponse {
   reply: string;
   actions: ChatAction[];
+  model?: string; // cevabı üreten model (teşhis için)
 }
 
 // ---------- Ayarlar ----------
@@ -55,8 +56,9 @@ const PROVIDERS = {
     url: "https://api.groq.com/openai/v1/chat/completions",
     keyEnv: "GROQ_API_KEY",
     modelEnv: "GROQ_MODEL",
-    // Paralel araç çağrısını destekler ("gece yap ve araç gönder" iki çağrıdır)
     defaultModel: "llama-3.3-70b-versatile",
+    // Varsayılan model hesapta yoksa sırayla denenir (Groq üretim modelleri, Kasım 2026)
+    fallbackModels: ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.1-8b-instant"],
   },
   gemini: {
     // Gemini'nin OpenAI uyumlu uç noktası; model adı kullanım anında kontrol edilmeli
@@ -64,6 +66,7 @@ const PROVIDERS = {
     keyEnv: "GEMINI_API_KEY",
     modelEnv: "GEMINI_MODEL",
     defaultModel: "gemini-2.5-flash",
+    fallbackModels: ["gemini-2.5-flash-lite"],
   },
 } as const;
 
@@ -78,64 +81,31 @@ const MAX_SPEED = 150;
 
 // ---------- Araç tanımları (OpenAI uyumlu biçim) ----------
 
+// LLM'e tek bir araç verilir; tüm alanlar isteğe bağlıdır. Böylece "gece yap ve araç gönder" gibi
+// birden fazla komut, paralel araç çağrısını desteklemeyen modellerde de tek çağrıyla yapılır.
+// Sunucu bu çağrıyı istemcinin uyguladığı komutlara (spawn_object, set_night, ...) çevirir.
+const TOOL_NAME = "simulasyonu_ayarla";
+
 const TOOLS = [
   {
     type: "function",
     function: {
-      name: "spawn_object",
+      name: TOOL_NAME,
       description:
-        "Yola yeni bir nesne gönderir. Hız 7 km/s ve altındaysa yaya, üstündeyse araç sayılır. Yoldaki önceki nesnenin yerini alır.",
+        "Simülasyona komut verir. Yalnızca kullanıcının istediği alanları doldur, diğerlerini hiç yazma.",
       parameters: {
         type: "object",
         properties: {
-          speedKmh: { type: "number", description: `Hız (km/s), ${MIN_SPEED}–${MAX_SPEED}` },
+          isNight: { type: "boolean", description: "true = geceye geç, false = gündüze geç (gündüz lambalar kapalı)" },
+          paused: { type: "boolean", description: "true = duraklat, false = devam ettir" },
+          timeScale: { type: "integer", enum: [1, 5, 10], description: "Simülasyon hız çarpanı" },
+          resetEnergy: { type: "boolean", description: "true = biriken enerji sayaçlarını sıfırla" },
+          spawnSpeedKmh: {
+            type: "number",
+            description: `Yola bu hızla yeni nesne gönder (km/s, ${MIN_SPEED}–${MAX_SPEED}); 7 ve altı yaya, üstü araç`,
+          },
         },
-        required: ["speedKmh"],
       },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "set_night",
-      description: "Gece ya da gündüz moduna geçer. Gündüz tüm lambalar kapalıdır.",
-      parameters: {
-        type: "object",
-        properties: { isNight: { type: "boolean", description: "true = gece, false = gündüz" } },
-        required: ["isNight"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "set_paused",
-      description: "Simülasyonu duraklatır ya da devam ettirir.",
-      parameters: {
-        type: "object",
-        properties: { paused: { type: "boolean", description: "true = duraklat, false = devam" } },
-        required: ["paused"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "set_time_scale",
-      description: "Simülasyon hız çarpanını ayarlar. Yalnızca 1, 5 ya da 10 olabilir.",
-      parameters: {
-        type: "object",
-        properties: { scale: { type: "integer", enum: [1, 5, 10] } },
-        required: ["scale"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "reset_energy",
-      description: "Biriken enerji tüketimini ve grafik geçmişini sıfırlar.",
-      parameters: { type: "object", properties: {} },
     },
   },
 ];
@@ -266,10 +236,11 @@ Kurallar:
 6. 7 km/s üstü araç, altı yaya sayılır.
 "Normal sistem" gece tüm lambaları %100 yakar (500 W). Tasarruf, akıllı sistemin normal sisteme göre harcamadığı enerjidir.
 
-Komutlar için araçları kullan:
+Komutlar için ${TOOL_NAME} aracını kullan:
+- Bir mesajdaki bütün komutları tek çağrıda, ilgili alanları doldurarak ver (örneğin "gece yap ve 70 ile araç gönder" → isNight: true, spawnSpeedKmh: 70).
 - Yaya için hız verilmezse 5 km/s, araç için 50 km/s kullan. Hız ${MIN_SPEED}–${MAX_SPEED} km/s aralığında olmalı.
 - Zaman çarpanı yalnızca 1, 5 ya da 10 olabilir.
-- Bir mesajda birden fazla komut varsa hepsini çağır (örneğin önce set_night, sonra spawn_object).
+- Soru soruluyorsa (komut yoksa) aracı çağırma, yalnızca cevap yaz.
 Enerji ve durum sorularında yalnızca aşağıdaki güncel verileri kullan, sayı uydurma. Konum lamba cinsindendir (1 = 1. lambanın hizası, 0 = yol girişi, 6 = çıkış).
 Proje dışı sorulara kibarca yalnızca bu simülasyon hakkında yardım edebildiğini söyle.
 
@@ -277,7 +248,33 @@ Güncel durum (JSON):
 ${JSON.stringify(stateSummary(s))}`;
 }
 
-// LLM'den gelen araç çağrısını doğrular; geçersizse null döner
+// Tek araç çağrısını sırayla uygulanacak komutlara çevirir: önce ortam ve zaman, en son nesne gönderme.
+// Geçersiz alanlar atılır.
+function toActions(name: string, rawArgs: string | undefined): ChatAction[] {
+  if (name !== TOOL_NAME) {
+    // Model eski tekil araç adlarından birini uydurursa onu da kabul et
+    const single = toAction(name, rawArgs);
+    return single ? [single] : [];
+  }
+  let a: Record<string, unknown>;
+  try {
+    a = rawArgs ? (JSON.parse(rawArgs) as Record<string, unknown>) : {};
+  } catch {
+    return [];
+  }
+  const out: (ChatAction | null)[] = [
+    "isNight" in a ? toAction("set_night", JSON.stringify({ isNight: a.isNight })) : null,
+    "paused" in a ? toAction("set_paused", JSON.stringify({ paused: a.paused })) : null,
+    "timeScale" in a ? toAction("set_time_scale", JSON.stringify({ scale: a.timeScale })) : null,
+    a.resetEnergy === true ? toAction("reset_energy", "{}") : null,
+    "spawnSpeedKmh" in a && a.spawnSpeedKmh !== null
+      ? toAction("spawn_object", JSON.stringify({ speedKmh: a.spawnSpeedKmh }))
+      : null,
+  ];
+  return out.filter((x): x is ChatAction => x !== null);
+}
+
+// Tekil komutu doğrular; geçersizse null döner
 function toAction(name: string, rawArgs: string | undefined): ChatAction | null {
   let args: Record<string, unknown>;
   try {
@@ -355,7 +352,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!provider) return error("Sunucu yapılandırması hatalı (LLM_PROVIDER).", 500);
   const apiKey = process.env[provider.keyEnv];
   if (!apiKey) return error("Sunucu yapılandırılmamış: API anahtarı yok.", 500);
-  const model = process.env[provider.modelEnv] || provider.defaultModel;
+  const configuredModel = process.env[provider.modelEnv] || provider.defaultModel;
 
   const ip =
     request.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
@@ -376,25 +373,39 @@ export async function POST(request: Request): Promise<Response> {
   if (typeof parsed === "string") return error(parsed, 400);
 
   const messages = [{ role: "system", content: systemPrompt(parsed.state) }, ...parsed.messages];
-  const callLlm = (temperature: number) =>
+  const callLlm = (m: string, temperature: number) =>
     fetch(provider.url, {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, temperature, max_tokens: 400, tools: TOOLS, tool_choice: "auto", messages }),
+      body: JSON.stringify({ model: m, temperature, max_tokens: 400, tools: TOOLS, tool_choice: "auto", messages }),
       signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
     });
 
+  let model = resolvedModel[providerName] ?? configuredModel;
   let llm: Response;
   let errCode = "";
   try {
-    llm = await callLlm(0.3);
-    // Model araç çağrısını bozuk üretirse Groq 400 "tool_use_failed" döner: bir kez daha, kararlı ayarla dene
-    if (!llm.ok && llm.status !== 429) {
-      errCode = await errorCode(llm);
-      if (errCode === "tool_use_failed") {
-        llm = await callLlm(0);
-        if (!llm.ok) errCode = await errorCode(llm);
+    llm = await callLlm(model, 0.3);
+    if (!llm.ok && llm.status !== 429) errCode = await errorCode(llm);
+
+    // Model bu hesapta yoksa: hesabın model listesinden tercih sırasındaki ilk uygun modele geç
+    if (errCode === "model_not_found" || llm.status === 404) {
+      const available = await listModels(provider.url, apiKey);
+      const next = [configuredModel, ...provider.fallbackModels].find((id) => id !== model && available.includes(id));
+      if (!next) {
+        const list = available.filter((id) => !/whisper|tts|guard/i.test(id)).slice(0, 8).join(", ");
+        return error(`Model "${model}" bulunamadı ve uygun yedek yok. Kullanılabilir modeller: ${list || "liste alınamadı"}. GROQ_MODEL ile seçilebilir.`, 502);
       }
+      model = next;
+      resolvedModel[providerName] = next; // sonraki isteklerde doğrudan bu kullanılır
+      llm = await callLlm(model, 0.3);
+      errCode = llm.ok || llm.status === 429 ? "" : await errorCode(llm);
+    }
+
+    // Model araç çağrısını bozuk üretirse Groq 400 "tool_use_failed" döner: bir kez daha, kararlı ayarla dene
+    if (errCode === "tool_use_failed") {
+      llm = await callLlm(model, 0);
+      errCode = llm.ok || llm.status === 429 ? "" : await errorCode(llm);
     }
   } catch {
     return error("Yapay zekâ servisine ulaşılamadı. Lütfen tekrar deneyin.", 502);
@@ -409,12 +420,33 @@ export async function POST(request: Request): Promise<Response> {
 
   const data = (await llm.json()) as LlmResponse;
   const message = data.choices?.[0]?.message;
-  const actions = (message?.tool_calls ?? [])
-    .map((c) => toAction(c.function?.name ?? "", c.function?.arguments))
-    .filter((a): a is ChatAction => a !== null);
+  const actions = (message?.tool_calls ?? []).flatMap((c) => toActions(c.function?.name ?? "", c.function?.arguments));
   const content = message?.content?.trim() ?? "";
   const reply = content || (actions.length > 0 ? describe(actions) : "Bunu anlayamadım, başka şekilde sorar mısın?");
 
-  const body: ChatResponse = { reply, actions };
+  const body: ChatResponse = { reply, actions, model };
   return json(body);
+}
+
+// Sunucu örneği boyunca, model bulunamadığında seçilen yedek model hatırlanır
+const resolvedModel: Partial<Record<keyof typeof PROVIDERS, string>> = {};
+
+// Testler için
+export function _resetResolvedModel(): void {
+  for (const k of Object.keys(resolvedModel)) delete resolvedModel[k as keyof typeof PROVIDERS];
+}
+
+// Hesabın erişebildiği model kimlikleri (OpenAI uyumlu GET /models)
+async function listModels(chatUrl: string, apiKey: string): Promise<string[]> {
+  try {
+    const res = await fetch(chatUrl.replace(/\/chat\/completions$/, "/models"), {
+      headers: { authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
+    });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { data?: { id?: unknown }[] };
+    return (data.data ?? []).map((m) => m.id).filter((id): id is string => typeof id === "string");
+  } catch {
+    return [];
+  }
 }

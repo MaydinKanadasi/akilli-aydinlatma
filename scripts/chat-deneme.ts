@@ -1,7 +1,7 @@
 // /api/chat fonksiyonunu sahte bir LLM servisine karşı dener (gerçek anahtar ve ağ kullanılmaz).
 // Çalıştırma: npm run -s chat-deneme
 import assert from "node:assert/strict";
-import { POST, _resetRateLimit, type ChatResponse } from "../api/chat.ts";
+import { POST, _resetRateLimit, _resetResolvedModel, type ChatResponse } from "../api/chat.ts";
 
 process.env.GROQ_API_KEY = "sahte-anahtar";
 delete process.env.LLM_PROVIDER;
@@ -26,10 +26,12 @@ let llmStatus = 200;
 // Doluysa sıradaki cevaplar bu kuyruktan verilir: [durum, gövde]
 let llmQueue: [number, unknown][] = [];
 let llmCalls = 0;
+let lastUrl = "";
 
-globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
+globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
   llmCalls++;
-  lastLlmBody = JSON.parse(String(init?.body));
+  lastUrl = String(url);
+  if (init?.body) lastLlmBody = JSON.parse(String(init.body));
   const [status, body] = llmQueue.shift() ?? [llmStatus, llmReply];
   return new Response(JSON.stringify(body), { status });
 }) as typeof fetch;
@@ -47,6 +49,7 @@ const ask = (content: string) => ({ messages: [{ role: "user", content }], state
 let passed = 0;
 async function test(name: string, fn: () => Promise<void>) {
   _resetRateLimit();
+  _resetResolvedModel();
   llmStatus = 200;
   llmQueue = [];
   llmCalls = 0;
@@ -62,8 +65,7 @@ await test("İki araç çağrısı: gece + 70 km/s araç", async () => {
         message: {
           content: null,
           tool_calls: [
-            { function: { name: "set_night", arguments: '{"isNight":true}' } },
-            { function: { name: "spawn_object", arguments: '{"speedKmh":70}' } },
+            { function: { name: "simulasyonu_ayarla", arguments: '{"spawnSpeedKmh":70,"isNight":true}' } },
           ],
         },
       },
@@ -80,7 +82,7 @@ await test("İki araç çağrısı: gece + 70 km/s araç", async () => {
   // LLM'e araçlar, model ve güncel durum gitti mi?
   const sent = lastLlmBody as unknown as { model: string; tools: unknown[]; messages: { role: string; content: string }[] };
   assert.equal(sent.model, "llama-3.3-70b-versatile");
-  assert.equal(sent.tools.length, 5);
+  assert.equal(sent.tools.length, 1);
   assert.equal(sent.messages[0].role, "system");
   assert.match(sent.messages[0].content, /"tasarrufYuzde":75/);
 });
@@ -90,6 +92,31 @@ await test("Metin cevabı olduğu gibi döner", async () => {
   const body = (await (await POST(request(ask("Ne kadar tasarruf ettik?")))).json()) as ChatResponse;
   assert.equal(body.reply, "Şu ana kadar 3,6 Wh tasarruf ettik (%75).");
   assert.deepEqual(body.actions, []);
+});
+
+await test("Tek çağrıdaki komutlar sabit sırayla çıkar, istenmeyen alanlar yok sayılır", async () => {
+  llmReply = {
+    choices: [
+      {
+        message: {
+          tool_calls: [
+            {
+              function: {
+                name: "simulasyonu_ayarla",
+                arguments: '{"spawnSpeedKmh":5,"timeScale":1,"resetEnergy":false,"paused":false}',
+              },
+            },
+          ],
+        },
+      },
+    ],
+  };
+  const body = (await (await POST(request(ask("yaya gönder, 1x yap, devam et")))).json()) as ChatResponse;
+  assert.deepEqual(body.actions, [
+    { name: "set_paused", args: { paused: false } },
+    { name: "set_time_scale", args: { scale: 1 } },
+    { name: "spawn_object", args: { speedKmh: 5 } },
+  ]);
 });
 
 await test("Geçersiz araç argümanları atılır, hız sınırlanır", async () => {
@@ -153,6 +180,38 @@ await test("Diğer hatalarda HTTP kodu ve hata kodu mesajda, yeniden deneme yok"
   assert.equal(res.status, 502);
   assert.equal(llmCalls, 1);
   assert.match(((await res.json()) as { error: string }).error, /HTTP 401, invalid_api_key/);
+});
+
+await test("model_not_found: hesabın model listesinden yedeğe geçer ve hatırlar", async () => {
+  const ok = { choices: [{ message: { content: "tamam" } }] };
+  llmQueue = [
+    [404, { error: { message: "model not found", type: "invalid_request_error", code: "model_not_found" } }],
+    [200, { data: [{ id: "whisper-large-v3" }, { id: "openai/gpt-oss-20b" }, { id: "openai/gpt-oss-120b" }] }],
+    [200, ok],
+  ];
+  const res = await POST(request(ask("selam")));
+  assert.equal(res.status, 200);
+  assert.equal(llmCalls, 3);
+  assert.equal(((await res.json()) as ChatResponse).model, "openai/gpt-oss-120b");
+  assert.equal((lastLlmBody as unknown as { model: string }).model, "openai/gpt-oss-120b");
+  // Sonraki istek doğrudan yedek modelle gider
+  llmQueue = [[200, ok]];
+  await POST(request(ask("selam")));
+  assert.equal(llmCalls, 4);
+  assert.equal((lastLlmBody as unknown as { model: string }).model, "openai/gpt-oss-120b");
+});
+
+await test("model_not_found ve uygun yedek yoksa kullanılabilir modeller listelenir", async () => {
+  llmQueue = [
+    [404, { error: { code: "model_not_found" } }],
+    [200, { data: [{ id: "whisper-large-v3" }, { id: "yeni-model-x" }] }],
+  ];
+  const res = await POST(request(ask("selam")));
+  assert.equal(res.status, 502);
+  assert.match(lastUrl, /\/openai\/v1\/models$/);
+  const msg = ((await res.json()) as { error: string }).error;
+  assert.match(msg, /yeni-model-x/);
+  assert.doesNotMatch(msg, /whisper/);
 });
 
 await test("Anahtar yoksa 500", async () => {
