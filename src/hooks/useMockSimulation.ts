@@ -134,6 +134,7 @@ export function useMockSimulation(config: ControllerConfig = DEFAULT_CONFIG) {
   return {
     state,
     energy: { smartWh: sim.smartWh, normalWh: sim.normalWh },
+    simTimeSec: sim.timeSec,
     history: sim.history,
     timeScale,
     setTimeScale,

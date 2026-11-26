@@ -3,8 +3,10 @@ import { RoadView } from "./components/RoadView";
 import { EnergyPanel } from "./components/EnergyPanel";
 import { ChartsPanel } from "./components/ChartsPanel";
 import { PwmPanel } from "./components/PwmPanel";
+import { ChatPanel } from "./components/ChatPanel";
 import { useMockSimulation } from "./hooks/useMockSimulation";
 import { DEFAULT_CONFIG, classifyBySpeed } from "./logic/controller";
+import type { ChatAction } from "./logic/chat";
 import "./App.css";
 
 function App() {
@@ -17,6 +19,27 @@ function App() {
   const send = (kmh: number) => {
     setSpeed(kmh);
     sim.spawn(kmh);
+  };
+
+  // LUMA'nın komutlarını simülasyona uygular (araç adları api/chat.ts'teki araçlarla aynı)
+  const applyAction = (action: ChatAction) => {
+    switch (action.name) {
+      case "spawn_object":
+        send(action.args.speedKmh);
+        break;
+      case "set_night":
+        sim.setNight(action.args.isNight);
+        break;
+      case "set_paused":
+        sim.setPaused(action.args.paused);
+        break;
+      case "set_time_scale":
+        sim.setTimeScale(action.args.scale);
+        break;
+      case "reset_energy":
+        sim.resetEnergy();
+        break;
+    }
   };
 
   // Kaydırıcı oynatılınca yoldaki nesnenin hızı da anında değişir
@@ -124,6 +147,18 @@ function App() {
           <PwmPanel lamps={state.lamps} running={!sim.paused} />
         </section>
       </div>
+
+      <ChatPanel
+        state={{
+          ...state,
+          smartWh: sim.energy.smartWh,
+          normalWh: sim.energy.normalWh,
+          simTimeSec: sim.simTimeSec,
+          timeScale: sim.timeScale,
+          paused: sim.paused,
+        }}
+        onAction={applyAction}
+      />
     </main>
   );
 }
