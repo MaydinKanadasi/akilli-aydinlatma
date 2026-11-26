@@ -30,6 +30,7 @@ ESP32 tabanlı akıllı sokak aydınlatma sisteminin web arayüzü ve simülasyo
 - **Gündüz/gece geçişi.**
 - **Enerji paneli:** Akıllı ve normal sistemin anlık gücü, biriken tüketimi ve tasarruf yüzdesi.
 - **Zaman grafikleri:** Son ~30 saniyede anlık güç (tasarruf alanı boyalı) ve 5 lambanın parlaklığı. Fareyle grafik üzerinde gezinerek o anki değerler okunabilir.
+- **LUMA yapay zekâ asistanı:** Sağ alttaki sohbet panelinden doğal dille komut verilir ("Gece yap ve 70 km/s hızla bir araç gönder") ve enerji tasarrufu sorulur. Groq'un ücretsiz katmanındaki bir LLM, araç çağırma (tool calling) ile simülasyonu yönetir; API anahtarı yalnızca sunucuda (Vercel ortam değişkeni) durur.
 - **PWM paneli:** Osiloskop görünümünde akan kare dalgalar, lamba başına ampul göstergesi, duty çubuğu ve ESP32 LEDC için 8 bitlik duty değeri (0–255).
 
 ## Mimari
@@ -82,10 +83,13 @@ Ardından tarayıcıda `http://localhost:5173` adresini açın.
 ## Proje Yapısı
 
 ```
+api/
+└── chat.ts                   # Vercel sunucu fonksiyonu: LLM asistanı (Groq, tool calling, istek sınırı)
 src/
 ├── logic/
 │   ├── types.ts              # Ortak veri tipleri
-│   └── controller.ts         # Lamba kontrol kuralları, enerji hesabı, PWM ayarları
+│   ├── controller.ts         # Lamba kontrol kuralları, enerji hesabı, PWM ayarları
+│   └── chat.ts               # Sohbet istemcisi (/api/chat)
 ├── hooks/
 │   └── useMockSimulation.ts  # Tarayıcı içi simülasyon (veri kaynağı) ve geçmiş kaydı
 ├── components/
@@ -93,7 +97,8 @@ src/
 │   ├── EnergyPanel.tsx       # Enerji karşılaştırması
 │   ├── ChartsPanel.tsx       # Zaman grafikleri
 │   ├── LineChart.tsx         # Ortak çizgi grafik bileşeni
-│   └── PwmPanel.tsx          # Osiloskop görünümlü PWM sinyalleri
+│   ├── PwmPanel.tsx          # Osiloskop görünümlü PWM sinyalleri
+│   └── ChatPanel.tsx         # LUMA sohbet paneli
 └── App.tsx
 ```
 
@@ -101,7 +106,7 @@ src/
 
 - [x] Demo web arayüzü (tarayıcı içi simülasyon)
 - [x] Görsel revizyon: sahne, zaman grafikleri, PWM paneli
-- [ ] LLM asistanı (doğal dille kontrol ve enerji analizi)
+- [x] LLM asistanı LUMA (doğal dille kontrol ve enerji analizi)
 - [ ] Unity simülasyonu
 - [ ] Unity ↔ web arayüzü WebSocket bağlantısı
 - [ ] ESP32 canlı veri entegrasyonu
